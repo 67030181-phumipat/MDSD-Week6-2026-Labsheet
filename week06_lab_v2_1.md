@@ -539,9 +539,9 @@ Future<Weather> fetchWeatherWithDio(String city) async {
 2. รูปแบบการเขียน query parameters (`queryParameters: {...}`) ต่างจากการต่อ string URL เองแบบที่ทำใน `WeatherService` (ขั้นตอนที่ 2.3) 
 
 > ✅ **Checkpoint 5.1** ถ่ายภาพหน้าจอ Debug Console ที่แสดงผลลัพธ์จริงจากการเรียก `fetchWeatherWithDio()` (ค่าทั้ง 4 ฟิลด์ของ `Weather` ที่ print ออกมา หรือแสดงผลบนหน้าจอถ้าเลือกแบบที่ 2)
-```text
-บันทึกรูปที่นี่
-```
+
+<img width="1407" height="235" alt="image" src="https://github.com/user-attachments/assets/fc0e65f7-e483-4009-9b13-cc91601aee52" />
+
 ### ขั้นตอนที่ 5.4 — 🧠 คิดเอง/ออกแบบเอง
 
 `DioException` มีหลายชนิด (`DioExceptionType`) แต่โค้ดในขั้นตอนที่ 5.2 จัดการเฉพาะ `connectionTimeout` ด้านล่างเป็นตัวอย่างการเพิ่มเงื่อนไขให้อีก 1 ชนิด (`badResponse`) ให้ดูเป็นแนวทาง จากนั้นให้เพิ่มเงื่อนไข `else if` อีกอย่างน้อย 1 ชนิดด้วยตัวเอง โดยเลือกจาก `DioExceptionType.receiveTimeout` หรือ `DioExceptionType.connectionError` (ห้ามซ้ำกับ `badResponse` ที่ให้เป็นตัวอย่างแล้ว) พร้อมข้อความแจ้งเตือนภาษาไทยที่เหมาะสมกับสาเหตุนั้นโดยเฉพาะ (ค้นคว้าความหมายของแต่ละชนิดได้จากเอกสารของแพ็กเกจ `dio` บน pub.dev)
@@ -562,14 +562,39 @@ Future<Weather> fetchWeatherWithDio(String city) async {
 
 > ✅ **Checkpoint 5.2** เปรียบเทียบสั้น ๆ ระหว่าง `http` กับ `dio` อย่างน้อย 3 ประเด็น โดยอ้างอิงจากสิ่งที่สังเกตได้จริงตอนทดลองในขั้นตอนที่ 5.3 เช่น การแปลง JSON อัตโนมัติ, การกำหนด Query Parameters, และรูปแบบการจัดการ Exception (`DioException` เทียบกับการดักจับหลายชนิดแยกกันแบบ `http`)
 
-```text
-บันทึกคำตอบที่นี่
+```
+1. การแปลงข้อมูล JSON (JSON Parsing)
+http: ต้องเรียก jsonDecode(response.body) เพื่อแปลงข้อมูลข้อความด้วยตนเองเสมอ
+dio: แปลงข้อมูล JSON ให้เป็น Map หรือ List ให้อัตโนมัติผ่าน response.data
+
+2. การส่ง Query Parameters
+http: ต้องเขียนต่อ String ใน URL เอง เช่น Uri.parse('$_baseUrl?q=$city&...')
+dio: กำหนดผ่าน Map ได้โดยตรง เช่น queryParameters: {'q': city, 'appid': apiKey}
+
+3. รูปแบบการจัดการ Exception
+http: ต้องแยกดักจับหลาย Class เช่น TimeoutException, ClientException, และ FormatException
+dio: รวมการจัดการ Network Exception ไว้ใน Class เดียวคือ DioException แล้วจำแนกสาเหตุผ่าน e.type
 ```
 >
 > ✅ **Checkpoint 5.3** แสดงโค้ดเงื่อนไข `DioExceptionType` เพิ่มเติมที่เขียนเองในขั้นตอนที่ 5.4 
 
-```text
-บันทึกคำตอบที่นี่
+```
+} on DioException catch (e) {
+  if (e.type == DioExceptionType.connectionTimeout) {
+    throw Exception('การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง');
+  } else if (e.type == DioExceptionType.receiveTimeout) {
+    throw Exception('การรับข้อมูลจากเซิร์ฟเวอร์ใช้เวลานานเกินกำหนด กรุณาลองใหม่อีกครั้ง');
+  } else if (e.type == DioExceptionType.connectionError) {
+    throw Exception('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+  } else if (e.type == DioExceptionType.badResponse) {
+    if (e.response?.statusCode == 404) {
+      throw Exception('ไม่พบข้อมูลเมืองที่ระบุ กรุณาตรวจสอบชื่อเมืองใหม่อีกครั้ง');
+    }
+    throw Exception('เซิร์ฟเวอร์ตอบกลับผิดพลาด (รหัส: ${e.response?.statusCode})');
+  } else {
+    throw Exception('เกิดข้อผิดพลาด: ${e.message}');
+  }
+}
 ```
 ---
 
